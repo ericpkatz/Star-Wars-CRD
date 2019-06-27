@@ -1,0 +1,144 @@
+<html>
+  <head>
+    <style>
+    body{
+      font-family: verdana;
+    }
+    #nav {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+    }
+
+    #nav a {
+      color: dodgerBlue;
+    }
+    #nav a.active {
+      border: solid 1px black;
+      background-color: dodgerBlue;
+      color: white;
+      padding: 5px;
+      border-radius: 3px;
+    }
+    #container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-top: 3em;
+    }
+
+    </style>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/axios/0.18.0/axios.js'></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://unpkg.com/react@16/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" crossorigin></script>
+    <script src='https://cdnjs.cloudflare.com/ajax/libs/react-router-dom/5.0.0/react-router-dom.js'></script>
+  </head>
+  <body>
+    <div id='root'></div>
+    <script type='text/babel'>
+      const { HashRouter, Route, Link } = ReactRouterDOM;
+      const Router = HashRouter;
+
+      const Home = ()=> <div>Welcome!!</div>;
+
+      const People = ({ people, onDelete })=> {
+        return (
+          <ul>
+            {
+              people.map((person, idx) => (
+                <li key={ idx }>{ person.name } <button onClick={ ()=> onDelete(idx)}>x</button></li>
+              ))
+            }
+          </ul>
+        );
+      };
+
+      class PersonForm extends React.Component{
+        constructor(){
+          super();
+          this.state = {
+            name: ''
+          };
+          this.onCreate = this.onCreate.bind(this);
+          this.onChange = this.onChange.bind(this);
+        }
+        onChange(ev){
+          this.setState({ [ev.target.name]: ev.target.value});
+        }
+        onCreate(ev){
+          ev.preventDefault();
+          this.props.onCreate(this.state, this.props.history);
+        }
+        render(){
+          const { name } = this.state;
+          const { onChange, onCreate } = this;
+          return (
+            <div>
+              <h1>Create a Person</h1>
+              <form onSubmit={ onCreate }>
+                <input name='name' value={ name } onChange={ onChange } />
+                <button disabled={ !name }>Create</button>
+              </form>
+            </div>
+          );
+        }
+      }
+
+      const Nav = ({ location , people})=> {
+        const { pathname } = location;
+        return (
+          <div id='nav'>
+            <Link to='/home' className={ pathname === '/home' ? 'active': '' }>Home</Link>
+            <Link to='/people' className={ pathname === '/people' ? 'active' : ''}>People ({ people.length })</Link>
+            <Link to='/people/create' className={ pathname === '/people/create' ? 'active' : ''}>Create A Person</Link>
+          </div>
+        );
+      };
+      class App extends React.Component{
+        constructor(){
+          super();
+          this.state = {
+            people: []
+          };
+          this.onDelete = this.onDelete.bind(this);
+          this.onCreate = this.onCreate.bind(this);
+        }
+        onDelete(idx){
+          const people = this.state.people.filter((person, _idx)=> idx !== _idx);
+          this.setState({ people });
+        }
+        onCreate(person, history){
+          const people = [...this.state.people, person];
+          this.setState({ people });
+          history.push('/people');
+        }
+        async componentDidMount(){
+          const response = await axios.get('https://profs-star-wars.herokuapp.com/people');
+          const people = response.data;
+          this.setState({ people });
+        }
+        render(){
+          const { people } = this.state;
+          const { onDelete, onCreate } = this;
+          return (
+            <Router>
+            <div>
+              <h1>Star Wars CRD (no U)</h1>
+              <Route render={ ({ location })=> <Nav people={ people } location={ location} /> }/>
+              <div id='container'>
+                <Route exact path='/home' component={ Home } />
+                <Route exact path='/people' people={ people } render={ ()=> <People people={ people } exact onDelete={ onDelete }/> } />
+                <Route path='/people/create' render={ ({ history} )=> <PersonForm onCreate={ onCreate } history={ history }/> } />
+              </div>
+              
+            </div>
+            </Router>
+          );
+        }
+      }
+      const root = document.querySelector('#root');
+      ReactDOM.render(<App />, root);
+    </script>
+  </body>
+</html>
